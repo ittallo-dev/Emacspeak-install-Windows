@@ -4,7 +4,8 @@ Abrir o PowerShell como administrador
 Usar o comando: wsl --install
 Usar o comando: wsl --install Ubuntu
 Criar um usuário e senha para o WSL instalado
-Fechar o PowerShell e abrir o WSL-Ubuntu
+Reiniciar sua máquina/computador
+Abrir o WSL-Ubuntu novamente
 No terminal do Ubuntu usar o comando: sudo apt update && sudo apt upgrade -y
 Ao terminar da atualização do sistema do Ubuntu feche o programa
 Abrir o Powershell como administrador e usar o comando: Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
