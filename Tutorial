@@ -1,1 +1,15 @@
+Tutorial e execusão do script e afins:
 
+Abrir o PowerShell como administrador
+Usar o comando: wsl --install
+Usar o comando: wsl --install Ubuntu
+Criar um usuário e senha para o WSL instalado
+Fechar o PowerShell e abrir o WSL-Ubuntu
+No terminal do Ubuntu usar o comando: sudo apt update && sudo apt upgrade -y
+Ao terminar da atualização do sistema do Ubuntu feche o programa
+Abrir o Powershell como administrador e usar o comando: Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+Digitar no terminal do Powershell "&" seguido por um único clique da tecla de espaço: '& '
+Abrir o gerenciador de arquivos selecionar o script de instalação "Automatic.ps1" e copiá-lo como caminho
+Adicionar o que foi cópiado ao terminal do Powershell
+O terminal irá iniciar a instalação e em certos momentos pedirá ao usuário a senha do WSL instalado previamente, adicione a senha e a instalação seguirá normalmente
+Após a instalação estar finalizada abra o WSL-Ubuntu e use o comando: emacs -nw
