@@ -70,7 +70,7 @@ $SharpWinDir = Join-Path $EmacspeakDir "servers\sharpwin"
 $EmacsDotDir = Join-Path $UserHome ".emacs.d"
 $InitElPath = Join-Path $EmacsDotDir "init.el"
 
-# Caminho do Emacs (O ideal no futuro seria instalar via Winget também: winget install GNU.Emacs)
+# Caminho do Emacs ( Nota: no futuro seria interessante instalar via Winget também: winget install GNU.Emacs)
 $EmacsExe = "C:\Program Files\Emacs\emacs-30.2\bin\emacs.exe"
 
 # ---------------------------------------------------------
