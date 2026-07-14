@@ -14,17 +14,19 @@ O script lida com todo o trabalho pesado: resolve dependências de sistema, comp
 
 ---
 
-## 🛠️ Como Usar (Instalação)
+## 🛠️ Como Usar?
 
 Para que a automação funcione perfeitamente e consiga instalar dependências de sistema (caso necessário), você deve executar o comando abaixo utilizando privilégios de administrador.
 
-### Pré-requisito
+### Pré-requisito!
 Certifique-se de que o **GNU Emacs (versão 30+)** já esteja instalado na sua máquina (por padrão, o script busca em `C:\Program Files\Emacs\emacs-"versão"\bin\emacs.exe`).
 
-### Passo a Passo
+Para a instalação nativa do **GNU Emacs (versão 30+)** siga por este link oficial: `https://mirror.ufs.ac.za/gnu/emacs/windows/emacs-30/`
+
+### Passo a Passo:
 1. Pressione a tecla `Windows`, digite **PowerShell**.
 2. Clique em **Executar como Administrador**.
 3. Copie o comando abaixo, cole no terminal e pressione `Enter`:
 
 ```powershell
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr '[https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/Auto.ps1](https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/Auto.ps1)' -UseBasicParsing).Content
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr '[https://raw.githubusercontent.com/ittallo/Emacspeak-install-Windows/main/install-emacspeak.ps1](https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/install-emacspeak.ps1)' -UseBasicParsing).Content
