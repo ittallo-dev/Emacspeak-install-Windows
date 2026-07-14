@@ -19,7 +19,7 @@ O script lida com todo o trabalho pesado: resolve dependências de sistema, comp
 Para que a automação funcione perfeitamente e consiga instalar dependências de sistema (caso necessário), você deve executar o comando abaixo utilizando privilégios de administrador.
 
 ### Pré-requisito
-Certifique-se de que o **GNU Emacs (versão 30+)** já esteja instalado na sua máquina (por padrão, o script busca em `C:\Program Files\Emacs\emacs-30.2\bin\emacs.exe`).
+Certifique-se de que o **GNU Emacs (versão 30+)** já esteja instalado na sua máquina (por padrão, o script busca em `C:\Program Files\Emacs\emacs-"versão"\bin\emacs.exe`).
 
 ### Passo a Passo
 1. Pressione a tecla `Windows`, digite **PowerShell**.
