@@ -29,4 +29,4 @@ Para a instalação nativa do **GNU Emacs (versão 30+)** siga por este link ofi
 3. Copie o comando abaixo, cole no terminal e pressione `Enter`:
 
 ```powershell
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr '[https://raw.githubusercontent.com/ittallo/Emacspeak-install-Windows/main/install-emacspeak.ps1](https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/install-emacspeak.ps1)' -UseBasicParsing).Content
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr 'https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/install-emacspeak.ps1' -UseBasicParsing).Content
