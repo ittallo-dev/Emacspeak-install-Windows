@@ -5,7 +5,7 @@
     Suporta o Windows 7/8/8.1 (via Chocolatey) e o Windows 10/11 (via Winget).
     Verifica, instala e valida dependências necessárias (Emacs, Git & .NET SDK).
     Realiza verificações de integridade física após cada clonagem e compilação,
-    incluindo bypass de variáveis de ambiente para o instalador do GNU Emacs.
+    incluindo bypass universal de variáveis de ambiente para todos os instaladores.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -46,7 +46,8 @@ function Install-And-Validate {
         [string]$WingetId, 
         [string]$ChocoId,
         [string]$FriendlyName,
-        [string]$PackageManager
+        [string]$PackageManager,
+        [string[]]$FallbackSearchPaths = @() # Array universal de caminhos para bypass
     )
     
     Write-Host "--> Verificando $FriendlyName..." -ForegroundColor DarkGray
@@ -71,21 +72,14 @@ function Install-And-Validate {
         Write-Host "    [✔] Sucesso: $FriendlyName foi instalado e validado no PATH!" -ForegroundColor Green
         return $true
     } else {
-        # Bypass e Validação Secundária (Física) para o Emacs
-        if ($CommandName -eq "emacs") {
-            Write-Host "    PATH não atualizado automaticamente pelo instalador. Iniciando varredura física..." -ForegroundColor DarkGray
+        # Bypass Universal e Validação Secundária (Física)
+        if ($FallbackSearchPaths.Count -gt 0) {
+            Write-Host "    [>>] PATH não atualizado automaticamente. Iniciando varredura física para $FriendlyName..." -ForegroundColor DarkGray
             
-            $SearchPaths = @(
-                "C:\Program Files\GNU Emacs", 
-                "C:\Program Files\Emacs", 
-                "C:\tools\emacs", 
-                "$env:LOCALAPPDATA\Programs"
-            )
-            
-            $PhysicalPath = Get-ChildItem -Path $SearchPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            $PhysicalPath = Get-ChildItem -Path $FallbackSearchPaths -Filter "$CommandName.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             
             if ($PhysicalPath) {
-                # Injeta o diretório do Emacs no PATH temporário desta sessão do terminal
+                # Injeta o diretório do executável no PATH temporário desta sessão do terminal
                 $env:Path += ";$($PhysicalPath.DirectoryName)"
                 Write-Host "    [✔] Sucesso: $FriendlyName instalado e mapeado fisicamente!" -ForegroundColor Green
                 return $true
@@ -110,27 +104,32 @@ if ($OSMajor -ge 10) {
     Write-Host "    [OK] Windows 10/11 detectado. Utilizando Winget." -ForegroundColor Gray
     $PackageManager = "winget"
     if (-Not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Error "Winget não encontrado em um sistema compatível. Atualize o App Installer via Microsoft Store!"
+        Write-Error "FALHA CRÍTICA: Winget não encontrado em um sistema compatível. Atualize o App Installer via Microsoft Store!"
         exit
     }
 } else {
     Write-Host "    [!] Versão anterior ao Windows 10 detectada. Utilizando Chocolatey." -ForegroundColor Gray
     $PackageManager = "choco"
     if (-Not (Get-Command choco -ErrorAction SilentlyContinue)) {
-        Write-Host "    Instalando Chocolatey..." -ForegroundColor Magenta
+        Write-Host "    [>>] Instalando Chocolatey..." -ForegroundColor Magenta
         Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         Update-EnvironmentVariables
     }
     if (-Not (Get-Command choco -ErrorAction SilentlyContinue)) {
-        Write-Error "Falha crítica ao instalar o Chocolatey. Abortando processo."
+        Write-Error "FALHA CRÍTICA: Instalação do Chocolatey mal sucedida. Abortando processo."
         exit
     }
 }
 
-# Instalação das dependências
-$UpdatedGit = Install-And-Validate -CommandName "git" -WingetId "Git.Git" -ChocoId "git" -FriendlyName "Git" -PackageManager $PackageManager
-$UpdatedDotNet = Install-And-Validate -CommandName "dotnet" -WingetId "Microsoft.DotNet.SDK.8" -ChocoId "dotnet-8.0-sdk" -FriendlyName ".NET SDK 8.0" -PackageManager $PackageManager
-$UpdatedEmacs = Install-And-Validate -CommandName "emacs" -WingetId "GNU.Emacs" -ChocoId "emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager
+# Arrays de caminhos físicos para o Bypass em caso de falha de variável de ambiente
+$GitPaths    = @("C:\Program Files\Git", "C:\tools\git", "$env:LOCALAPPDATA\Programs\Git")
+$DotNetPaths = @("C:\Program Files\dotnet", "C:\tools\dotnet", "$env:LOCALAPPDATA\Microsoft\dotnet")
+$EmacsPaths  = @("C:\Program Files\GNU Emacs", "C:\Program Files\Emacs", "C:\tools\emacs", "$env:LOCALAPPDATA\Programs")
+
+# Instalação das dependências com validação física
+$UpdatedGit    = Install-And-Validate -CommandName "git" -WingetId "Git.Git" -ChocoId "git" -FriendlyName "Git" -PackageManager $PackageManager -FallbackSearchPaths $GitPaths
+$UpdatedDotNet = Install-And-Validate -CommandName "dotnet" -WingetId "Microsoft.DotNet.SDK.8" -ChocoId "dotnet-8.0-sdk" -FriendlyName ".NET SDK 8.0" -PackageManager $PackageManager -FallbackSearchPaths $DotNetPaths
+$UpdatedEmacs  = Install-And-Validate -CommandName "emacs" -WingetId "GNU.Emacs" -ChocoId "emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager -FallbackSearchPaths $EmacsPaths
 
 # ---------------------------------------------------------
 # ETAPA 2: Definição de Variáveis e Busca Dinâmica do Emacs
@@ -146,22 +145,14 @@ $InitElPath = Join-Path $EmacsDotDir "init.el"
 
 $EmacsExe = (Get-Command emacs -ErrorAction SilentlyContinue).Source
 
-# Varredura mais ampla para cobrir padrões atualizados do Winget
+# Varredura para cobrir padrões atualizados do Winget/Choco
 if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Host "    Buscando binário do Emacs em repositórios conhecidos..." -ForegroundColor DarkGray
-    
-    $ExtendedPaths = @(
-        "C:\Program Files\GNU Emacs",
-        "C:\Program Files\Emacs",
-        "C:\tools\emacs",
-        "$env:LOCALAPPDATA\Programs"
-    )
-    
-    $EmacsExe = (Get-ChildItem -Path $ExtendedPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+    Write-Host "    [>>] Buscando binário do Emacs em repositórios conhecidos..." -ForegroundColor DarkGray
+    $EmacsExe = (Get-ChildItem -Path $EmacsPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
 }
 
 if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Error "Não foi possível localizar fisicamente o emacs.exe mesmo após varredura ampla. Abortando processo."
+    Write-Error "FALHA CRÍTICA: Não foi possível localizar fisicamente o emacs.exe mesmo após varredura ampla. Abortando processo."
     exit
 }
 Write-Host "    [OK] Emacs validado fisicamente em: $EmacsExe" -ForegroundColor Green
@@ -174,35 +165,37 @@ Write-Host "`n[3/6] Sincronizando repositórios do GitHub..." -ForegroundColor Y
 
 try {
     if (-Not (Test-Path $EmacspeakDir)) {
-        Write-Host "    Clonando repositório principal do Emacspeak..." -ForegroundColor DarkGray
+        Write-Host "    [>>] Clonando repositório principal do Emacspeak..." -ForegroundColor DarkGray
         git clone https://github.com/tvraman/emacspeak.git $EmacspeakDir | Out-Null
         
-        # Validação física da clonagem
-        if (-Not (Test-Path (Join-Path $EmacspeakDir "lisp"))) {
-            Write-Error "Falha: O repositório Emacspeak não foi clonado corretamente na máquina."
+        # Validação física da clonagem rigorosa (Verifica a pasta Lisp e a estrutura .git)
+        $EmacspeakValid = (Test-Path (Join-Path $EmacspeakDir "lisp")) -and (Test-Path (Join-Path $EmacspeakDir ".git"))
+        if (-Not $EmacspeakValid) {
+            Write-Error "FALHA CRÍTICA: O repositório Emacspeak não foi clonado com integridade na máquina."
             exit
         }
-        Write-Host "    [✔] Emacspeak clonado e validado." -ForegroundColor Green
+        Write-Host "    [✔] Emacspeak clonado e validado fisicamente." -ForegroundColor Green
     } else {
         Write-Host "    [OK] Repositório Emacspeak já está presente." -ForegroundColor Gray
     }
 
     if (-Not (Test-Path $SharpWinDir)) {
-        Write-Host "    Clonando repositório do servidor SharpWin..." -ForegroundColor DarkGray
+        Write-Host "    [>>] Clonando repositório do servidor SharpWin..." -ForegroundColor DarkGray
         Set-Location (Join-Path $EmacspeakDir "servers")
         git clone https://github.com/robertmeta/sharpwin.git | Out-Null
         
-        # Validação física da clonagem
-        if (-Not (Test-Path (Join-Path $SharpWinDir "sharpwin.csproj"))) {
-            Write-Error "Falha: O repositório SharpWin não foi clonado corretamente na máquina."
+        # Validação física da clonagem rigorosa (Verifica o projeto e a estrutura .git)
+        $SharpWinValid = (Test-Path (Join-Path $SharpWinDir "sharpwin.csproj")) -and (Test-Path (Join-Path $SharpWinDir ".git"))
+        if (-Not $SharpWinValid) {
+            Write-Error "FALHA CRÍTICA: O repositório SharpWin não foi clonado com integridade na máquina."
             exit
         }
-        Write-Host "    [✔] SharpWin clonado e validado." -ForegroundColor Green
+        Write-Host "    [✔] SharpWin clonado e validado fisicamente." -ForegroundColor Green
     } else {
         Write-Host "    [OK] Repositório SharpWin já está presente." -ForegroundColor Gray
     }
 } catch {
-    Write-Error "FALHA CRÍTICA durante o uso do Git."
+    Write-Error "FALHA CRÍTICA: Uso do Git mal sucedido."
     exit
 }
 
@@ -214,18 +207,18 @@ Write-Host "`n[4/6] Compilando o servidor de voz nativo (SharpWin)..." -Foregrou
 
 try {
     Set-Location $SharpWinDir
-    Write-Host "    Executando 'dotnet publish'..." -ForegroundColor DarkGray
+    Write-Host "    [>>] Executando 'dotnet publish'..." -ForegroundColor DarkGray
     dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o (Join-Path $EmacspeakDir "servers") | Out-Null
     
     # Validação física da compilação
     $CompiledExe = Join-Path $EmacspeakDir "servers\sharpwin.exe"
     if (-Not (Test-Path $CompiledExe)) {
-        Write-Error "Falha: O compilador .NET terminou, mas o arquivo sharpwin.exe não foi encontrado."
+        Write-Error "FALHA CRÍTICA: O compilador .NET terminou, mas o arquivo sharpwin.exe não foi encontrado."
         exit
     }
     Write-Host "    [✔] Servidor compilado, empacotado e validado fisicamente!" -ForegroundColor Green
 } catch {
-    Write-Error "FALHA CRÍTICA na compilação do .NET."
+    Write-Error "FALHA CRÍTICA: Compilação do .NET mal sucedida."
     exit
 }
 
@@ -237,17 +230,17 @@ Write-Host "`n[5/6] Gerando mapeamentos estruturais do Emacspeak..." -Foreground
 
 try {
     Set-Location (Join-Path $EmacspeakDir "lisp")
-    Write-Host "    Invocando o Emacs em background..." -ForegroundColor DarkGray
+    Write-Host "    [>>] Invocando o Emacs em background..." -ForegroundColor DarkGray
     & $EmacsExe --batch --eval "(require 'loaddefs-gen)" --eval "(loaddefs-generate `".`" `"emacspeak-loaddefs.el`")" 2>&1 | Out-Null
     
     # Validação física da geração
     if (-Not (Test-Path "emacspeak-loaddefs.el")) {
-        Write-Error "Falha: O arquivo emacspeak-loaddefs.el não foi gerado no disco."
+        Write-Error "FALHA CRÍTICA: O arquivo emacspeak-loaddefs.el não foi gerado no disco."
         exit
     }
     Write-Host "    [✔] Arquivo emacspeak-loaddefs.el gerado e validado." -ForegroundColor Green
 } catch {
-    Write-Error "FALHA CRÍTICA ao interagir com o binário do Emacs."
+    Write-Error "FALHA CRÍTICA: Interação com o binário do Emacs mal sucedida."
     exit
 }
 
@@ -261,7 +254,7 @@ $EmacspeakDirUnix = $EmacspeakDir -replace "\\", "/"
 if (-Not $EmacspeakDirUnix.EndsWith("/")) { $EmacspeakDirUnix += "/" }
 
 if (-Not (Test-Path $EmacsDotDir)) {
-    Write-Host "    Criando diretório .emacs.d..." -ForegroundColor DarkGray
+    Write-Host "    [>>] Criando diretório .emacs.d..." -ForegroundColor DarkGray
     New-Item -ItemType Directory -Force -Path $EmacsDotDir | Out-Null
 }
 
@@ -288,7 +281,7 @@ $ElispConfig = @"
 
 ;; 6. Inicialização do sistema
 (load-file (concat emacspeak-dir "lisp/emacspeak-setup.el"))
-
+ 
 ;; - Fim da Configuração Base -
 "@
 
@@ -296,7 +289,7 @@ Add-Content -Path $InitElPath -Value $ElispConfig -Encoding UTF8
 
 # Validação física final
 if (-Not (Test-Path $InitElPath)) {
-    Write-Error "Falha: O arquivo init.el não pôde ser gravado."
+    Write-Error "FALHA CRÍTICA: O arquivo init.el não pôde ser gravado."
     exit
 }
 Write-Host "    [✔] Arquivo init.el configurado e verificado no disco." -ForegroundColor Green
