@@ -58,7 +58,7 @@ function Install-And-Validate {
     Write-Host "    [!] $FriendlyName ausente. Iniciando instalação via $PackageManager..." -ForegroundColor Magenta
     
     if ($PackageManager -eq "winget") {
-        winget install --id $WingetId -e # --silent --accept-package-agreements --accept-source-agreements | Out-Null
+        winget install --id $WingetId -e --silent --accept-package-agreements --accept-source-agreements | Out-Null
     } else {
         choco install $ChocoId -y | Out-Null
     }
