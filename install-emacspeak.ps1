@@ -107,7 +107,7 @@ if ($OSMajor -ge 10) {
 # Instalação das dependências
 $UpdatedGit = Install-And-Validate -CommandName "git" -WingetId "Git.Git" -ChocoId "git" -FriendlyName "Git" -PackageManager $PackageManager
 $UpdatedDotNet = Install-And-Validate -CommandName "dotnet" -WingetId "Microsoft.DotNet.SDK.8" -ChocoId "dotnet-8.0-sdk" -FriendlyName ".NET SDK 8.0" -PackageManager $PackageManager
-$UpdatedEmacs = Install-And-Validate -CommandName "emacs" -WingetId "GNU.Emacs" -ChocoId "emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager
+$UpdatedEmacs = Install-And-Validate -CommandName "Emacs" -WingetId "GNU.Emacs" -ChocoId "Emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager
 
 # ---------------------------------------------------------
 # ETAPA 2: Definição de Variáveis e Busca Dinâmica do Emacs
