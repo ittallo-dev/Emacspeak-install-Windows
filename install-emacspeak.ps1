@@ -4,7 +4,8 @@
 .DESCRIPTION
     Suporta o Windows 7/8/8.1 (via Chocolatey) e o Windows 10/11 (via Winget).
     Verifica, instala e valida dependências necessárias (Emacs, Git & .NET SDK).
-    Realiza verificações de integridade física após cada clonagem e compilação.
+    Realiza verificações de integridade física após cada clonagem e compilação,
+    incluindo bypass de variáveis de ambiente para o instalador do GNU Emacs.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -36,9 +37,9 @@ function Update-EnvironmentVariables {
     }
 }
 
-# ------------------------------------------------------------
+# -------------------------------------------------------------
 # FUNÇÃO: Instalar e Validar Dependências (Winget / Chocolatey)
-# ------------------------------------------------------------
+# -------------------------------------------------------------
 function Install-And-Validate {
     param(
         [string]$CommandName, 
@@ -65,11 +66,33 @@ function Install-And-Validate {
     
     Update-EnvironmentVariables
     
+    # Validação primária (Variáveis de Ambiente)
     if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
-        Write-Host "    [✔] Sucesso: $FriendlyName foi instalado e validado no sistema!" -ForegroundColor Green
+        Write-Host "    [✔] Sucesso: $FriendlyName foi instalado e validado no PATH!" -ForegroundColor Green
         return $true
     } else {
-        Write-Error "FALHA CRÍTICA: A instalação do $FriendlyName concluiu, mas o comando '$CommandName' não foi reconhecido."
+        # Bypass e Validação Secundária (Física) para o Emacs
+        if ($CommandName -eq "emacs") {
+            Write-Host "    PATH não atualizado automaticamente pelo instalador. Iniciando varredura física..." -ForegroundColor DarkGray
+            
+            $SearchPaths = @(
+                "C:\Program Files\GNU Emacs", 
+                "C:\Program Files\Emacs", 
+                "C:\tools\emacs", 
+                "$env:LOCALAPPDATA\Programs"
+            )
+            
+            $PhysicalPath = Get-ChildItem -Path $SearchPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            
+            if ($PhysicalPath) {
+                # Injeta o diretório do Emacs no PATH temporário desta sessão do terminal
+                $env:Path += ";$($PhysicalPath.DirectoryName)"
+                Write-Host "    [✔] Sucesso: $FriendlyName instalado e mapeado fisicamente!" -ForegroundColor Green
+                return $true
+            }
+        }
+        
+        Write-Error "FALHA CRÍTICA: A instalação do $FriendlyName concluiu, mas o comando ou executável não foi encontrado."
         exit
     }
 }
@@ -107,7 +130,7 @@ if ($OSMajor -ge 10) {
 # Instalação das dependências
 $UpdatedGit = Install-And-Validate -CommandName "git" -WingetId "Git.Git" -ChocoId "git" -FriendlyName "Git" -PackageManager $PackageManager
 $UpdatedDotNet = Install-And-Validate -CommandName "dotnet" -WingetId "Microsoft.DotNet.SDK.8" -ChocoId "dotnet-8.0-sdk" -FriendlyName ".NET SDK 8.0" -PackageManager $PackageManager
-$UpdatedEmacs = Install-And-Validate -CommandName "Emacs" -WingetId "GNU.Emacs" -ChocoId "Emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager
+$UpdatedEmacs = Install-And-Validate -CommandName "emacs" -WingetId "GNU.Emacs" -ChocoId "emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager
 
 # ---------------------------------------------------------
 # ETAPA 2: Definição de Variáveis e Busca Dinâmica do Emacs
@@ -122,13 +145,23 @@ $EmacsDotDir = Join-Path $UserHome ".emacs.d"
 $InitElPath = Join-Path $EmacsDotDir "init.el"
 
 $EmacsExe = (Get-Command emacs -ErrorAction SilentlyContinue).Source
+
+# Varredura mais ampla para cobrir padrões atualizados do Winget
 if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Host "    Buscando binário do Emacs em C:\Program Files e C:\tools..." -ForegroundColor DarkGray
-    $EmacsExe = (Get-ChildItem -Path @("C:\Program Files\Emacs", "C:\tools\emacs") -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+    Write-Host "    Buscando binário do Emacs em repositórios conhecidos..." -ForegroundColor DarkGray
+    
+    $ExtendedPaths = @(
+        "C:\Program Files\GNU Emacs",
+        "C:\Program Files\Emacs",
+        "C:\tools\emacs",
+        "$env:LOCALAPPDATA\Programs"
+    )
+    
+    $EmacsExe = (Get-ChildItem -Path $ExtendedPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
 }
 
 if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Error "Não foi possível localizar fisicamente o emacs.exe. Abortando processo."
+    Write-Error "Não foi possível localizar fisicamente o emacs.exe mesmo após varredura ampla. Abortando processo."
     exit
 }
 Write-Host "    [OK] Emacs validado fisicamente em: $EmacsExe" -ForegroundColor Green
