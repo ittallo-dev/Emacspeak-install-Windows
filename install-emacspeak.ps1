@@ -302,4 +302,6 @@ Write-Host "`n======================================================" -Foregroun
 Write-Host " ✔ INSTALAÇÃO FINALIZADA COM SUCESSO!" -ForegroundColor Green
 Write-Host " Todas as dependências e arquivos foram validados fisicamente." -ForegroundColor Green
 Write-Host " Inicie o seu Emacs para começar o uso do ambiente audível." -ForegroundColor Green
+Write-Host " Use o menu Iniciar e pesquise por "Emacs" e dê Enter no resultado da pesquisa," -ForegroundColor Green
+Write-Host " isso vai iniciar o programa que deve responder anunciando que o sistema está funcionando." -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
