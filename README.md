@@ -6,7 +6,7 @@ O script lida com todo o trabalho pesado: resolve dependências de sistema, comp
 
 ## 🚀 O que este script faz?
 
-1. **Instalação de Pré-requisitos:** Verifica a presença do `Git` e do `.NET SDK` no sistema. Caso não existam, realiza o download e a instalação silenciosa via `winget`.
+1. **Instalação de Pré-requisitos:** Verifica a presença do `GNU Emacs` , `Git` e do `.NET SDK` no sistema. Caso não existam, realiza o download e a instalação silenciosa via `winget` ou via `chocolatey`.
 2. **Sincronização de Código:** Clona os repositórios oficiais do [Emacspeak](https://github.com/tvraman/emacspeak) e do servidor de voz [SharpWin](https://github.com/robertmeta/sharpwin) diretamente para a sua pasta de usuário.
 3. **Compilação Independente:** Utiliza o `.NET` para compilar o SharpWin em um executável autônomo (`.exe`), empacotando todas as dependências de áudio nativas do Windows.
 4. **Geração de Autoloads:** Executa o binário do seu GNU Emacs em *Batch Mode* (segundo plano) para gerar o arquivo vital de mapeamento `emacspeak-loaddefs.el`.
@@ -19,9 +19,8 @@ O script lida com todo o trabalho pesado: resolve dependências de sistema, comp
 Para que a automação funcione perfeitamente e consiga instalar dependências de sistema (caso necessário), você deve executar o comando abaixo utilizando privilégios de administrador.
 
 ### Pré-requisito!
-Certifique-se de que o **GNU Emacs (versão 30+)** já esteja instalado na sua máquina (por padrão, o script busca em `C:\Program Files\Emacs\emacs-"versão"\bin\emacs.exe`).
-
-Para a instalação nativa do **GNU Emacs (versão 30+)** siga por este link oficial: `https://mirror.ufs.ac.za/gnu/emacs/windows/emacs-30/`
+Windows 10 e 11 realizam a instalação de forma mais direta via `winget` , as versões do Windows 7 , 8 e 8.1 fazem uso do `chocolatey` para a instalação das dependências e afins. Para a instalação bem sucedida
+é necessário possuir alguns dos sitemas operacionais citados acima com os respectivos gerenciadores de arquivos da versão em uso.
 
 ### Passo a Passo:
 1. Pressione a tecla `Windows`, digite **PowerShell**.
