@@ -51,4 +51,4 @@ O script possui suporte nativo para máquinas físicas e virtuais rodando:
 3. Copie o comando abaixo, cole no seu terminal e pressione `Enter`:
 
 ```powershell
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr '[https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/install-emacspeak.ps1]' -UseBasicParsing).Content
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iex (iwr 'https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/install-emacspeak.ps1' -UseBasicParsing).Content
