@@ -3,9 +3,8 @@
     Script de instalação automatizada e nativa do Emacs/Emacspeak no Windows.
 .DESCRIPTION
     Suporta o Windows 7/8/8.1 (via Chocolatey) e o Windows 10/11 (via Winget).
-    Verifica, instala e valida dependências necessárias (Emacs, Git & .NET SDK).
-    Realiza verificações de integridade física após cada clonagem e compilação,
-    incluindo bypass universal de variáveis de ambiente para todos os instaladores.
+    Verifica, instala e valida dependências necessárias (GNU Emacs, Git & .NET SDK).
+    Baixa módulos dinâmicos de acessibilidade via GitHub para o ambiente do GNU Emacs.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -67,19 +66,16 @@ function Install-And-Validate {
     
     Update-EnvironmentVariables
     
-    # Validação primária (Variáveis de Ambiente)
     if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
         Write-Host "    [✔] Sucesso: $FriendlyName foi instalado e validado no PATH!" -ForegroundColor Green
         return $true
     } else {
-        # Bypass Universal e Validação Secundária (Física)
         if ($FallbackSearchPaths.Count -gt 0) {
             Write-Host "    [>>] PATH não atualizado automaticamente. Iniciando varredura física para $FriendlyName..." -ForegroundColor DarkGray
             
             $PhysicalPath = Get-ChildItem -Path $FallbackSearchPaths -Filter "$CommandName.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             
             if ($PhysicalPath) {
-                # Injeta o diretório do executável no PATH temporário desta sessão do terminal
                 $env:Path += ";$($PhysicalPath.DirectoryName)"
                 Write-Host "    [✔] Sucesso: $FriendlyName instalado e mapeado fisicamente!" -ForegroundColor Green
                 return $true
@@ -91,11 +87,11 @@ function Install-And-Validate {
     }
 }
 
-# ---------------------------------------------------
-# ETAPA 1: Verificação de SO e Gerenciador de Pacotes
-# ---------------------------------------------------
-Show-Progress -Activity "Pré-requisitos do sistema" -Status "Analisando versão do Windows e instalando gerenciador"
-Write-Host "`n[1/6] Analisando ambiente do sistema operacional..." -ForegroundColor Yellow
+# ------------------------------------------------------
+# ETAPA 1: Verificação de SO e Instalação da Arquitetura
+# ------------------------------------------------------
+Show-Progress -Activity "Pré-requisitos de Infraestrutura" -Status "Analisando versão do Windows e instalando ferramentas base"
+Write-Host "`n[1/6] Analisando ambiente do sistema operacional e instalando dependências..." -ForegroundColor Yellow
 
 $OSMajor = [Environment]::OSVersion.Version.Major
 $PackageManager = ""
@@ -126,36 +122,36 @@ $GitPaths    = @("C:\Program Files\Git", "C:\tools\git", "$env:LOCALAPPDATA\Prog
 $DotNetPaths = @("C:\Program Files\dotnet", "C:\tools\dotnet", "$env:LOCALAPPDATA\Microsoft\dotnet")
 $EmacsPaths  = @("C:\Program Files\GNU Emacs", "C:\Program Files\Emacs", "C:\tools\emacs", "$env:LOCALAPPDATA\Programs")
 
-# Instalação das dependências com validação física
+# Instalação de Dependências base
 $UpdatedGit    = Install-And-Validate -CommandName "git" -WingetId "Git.Git" -ChocoId "git" -FriendlyName "Git" -PackageManager $PackageManager -FallbackSearchPaths $GitPaths
 $UpdatedDotNet = Install-And-Validate -CommandName "dotnet" -WingetId "Microsoft.DotNet.SDK.8" -ChocoId "dotnet-8.0-sdk" -FriendlyName ".NET SDK 8.0" -PackageManager $PackageManager -FallbackSearchPaths $DotNetPaths
 $UpdatedEmacs  = Install-And-Validate -CommandName "emacs" -WingetId "GNU.Emacs" -ChocoId "emacs" -FriendlyName "GNU Emacs" -PackageManager $PackageManager -FallbackSearchPaths $EmacsPaths
 
 # ---------------------------------------------------------
-# ETAPA 2: Definição de Variáveis e Busca Dinâmica do Emacs
+# ETAPA 2: Verificação do Emacs e Mapeamento de Diretórios
 # ---------------------------------------------------------
-Show-Progress -Activity "Mapeamento de Diretórios" -Status "Configurando caminhos de usuário e sistema"
-Write-Host "`n[2/6] Mapeando diretórios de ambiente..." -ForegroundColor Yellow
+Show-Progress -Activity "Validação do Emacs" -Status "Verificando instalação do GNU Emacs"
+Write-Host "`n[2/6] Verificando integridade do GNU Emacs e mapeando ambiente..." -ForegroundColor Yellow
+
+$EmacsExe = (Get-Command emacs -ErrorAction SilentlyContinue).Source
+
+# Varredura de segurança secundária para garantir a localização do binário
+if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
+    Write-Host "    [>>] Emacs não detectado no PATH do sistema. Buscando em repositórios físicos..." -ForegroundColor DarkGray
+    $EmacsExe = (Get-ChildItem -Path $EmacsPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+}
+
+if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
+    Write-Error "FALHA CRÍTICA: O GNU Emacs não foi encontrado fisicamente, mesmo após a tentativa de instalação. Abortando processo."
+    exit
+}
+Write-Host "    [OK] Emacs validado fisicamente e pronto para uso em: $EmacsExe" -ForegroundColor Green
 
 $UserHome = [System.Environment]::GetFolderPath("UserProfile")
 $EmacspeakDir = Join-Path $UserHome "emacspeak"
 $SharpWinDir = Join-Path $EmacspeakDir "servers\sharpwin"
 $EmacsDotDir = Join-Path $UserHome ".emacs.d"
 $InitElPath = Join-Path $EmacsDotDir "init.el"
-
-$EmacsExe = (Get-Command emacs -ErrorAction SilentlyContinue).Source
-
-# Varredura para cobrir padrões atualizados do Winget/Choco
-if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Host "    [>>] Buscando binário do Emacs em repositórios conhecidos..." -ForegroundColor DarkGray
-    $EmacsExe = (Get-ChildItem -Path $EmacsPaths -Filter "emacs.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-}
-
-if (-Not $EmacsExe -or -Not (Test-Path $EmacsExe)) {
-    Write-Error "FALHA CRÍTICA: Não foi possível localizar fisicamente o emacs.exe mesmo após varredura ampla. Abortando processo."
-    exit
-}
-Write-Host "    [OK] Emacs validado fisicamente em: $EmacsExe" -ForegroundColor Green
 
 # ---------------------------------
 # ETAPA 3: Obtenção do Código-Fonte
@@ -168,7 +164,6 @@ try {
         Write-Host "    [>>] Clonando repositório principal do Emacspeak..." -ForegroundColor DarkGray
         git clone https://github.com/tvraman/emacspeak.git $EmacspeakDir | Out-Null
         
-        # Validação física da clonagem rigorosa (Verifica a pasta Lisp e a estrutura .git)
         $EmacspeakValid = (Test-Path (Join-Path $EmacspeakDir "lisp")) -and (Test-Path (Join-Path $EmacspeakDir ".git"))
         if (-Not $EmacspeakValid) {
             Write-Error "FALHA CRÍTICA: O repositório Emacspeak não foi clonado com integridade na máquina."
@@ -184,10 +179,9 @@ try {
         Set-Location (Join-Path $EmacspeakDir "servers")
         git clone https://github.com/robertmeta/sharpwin.git | Out-Null
         
-        # Validação física da clonagem rigorosa (Verifica o projeto e a estrutura .git)
         $SharpWinValid = (Test-Path (Join-Path $SharpWinDir "sharpwin.csproj")) -and (Test-Path (Join-Path $SharpWinDir ".git"))
         if (-Not $SharpWinValid) {
-            Write-Error "FALHA CRÍTICA: O repositório SharpWin não foi clonado com integridade na máquina."
+            Write-Error "FALHA CRÍTICA: O repositório SharpWin não foi clonado com integridade."
             exit
         }
         Write-Host "    [✔] SharpWin clonado e validado fisicamente." -ForegroundColor Green
@@ -210,7 +204,6 @@ try {
     Write-Host "    [>>] Executando 'dotnet publish'..." -ForegroundColor DarkGray
     dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o (Join-Path $EmacspeakDir "servers") | Out-Null
     
-    # Validação física da compilação
     $CompiledExe = Join-Path $EmacspeakDir "servers\sharpwin.exe"
     if (-Not (Test-Path $CompiledExe)) {
         Write-Error "FALHA CRÍTICA: O compilador .NET terminou, mas o arquivo sharpwin.exe não foi encontrado."
@@ -233,7 +226,6 @@ try {
     Write-Host "    [>>] Invocando o Emacs em background..." -ForegroundColor DarkGray
     & $EmacsExe --batch --eval "(require 'loaddefs-gen)" --eval "(loaddefs-generate `".`" `"emacspeak-loaddefs.el`")" 2>&1 | Out-Null
     
-    # Validação física da geração
     if (-Not (Test-Path "emacspeak-loaddefs.el")) {
         Write-Error "FALHA CRÍTICA: O arquivo emacspeak-loaddefs.el não foi gerado no disco."
         exit
@@ -244,18 +236,30 @@ try {
     exit
 }
 
-# ---------------------------
-# ETAPA 6: Injeção no init.el
-# ---------------------------
-Show-Progress -Activity "Configuração Final" -Status "Gravando configurações no init.el"
-Write-Host "`n[6/6] Injetando configurações no init.el..." -ForegroundColor Yellow
-
-$EmacspeakDirUnix = $EmacspeakDir -replace "\\", "/"
-if (-Not $EmacspeakDirUnix.EndsWith("/")) { $EmacspeakDirUnix += "/" }
+# -----------------------------------------------------------
+# ETAPA 6: Download de Módulos e Injeção no init.el
+# -----------------------------------------------------------
+Show-Progress -Activity "Configuração Final" -Status "Baixando módulos e gravando configurações no init.el"
+Write-Host "`n[6/6] Configurando ambiente modular e injetando no init.el..." -ForegroundColor Yellow
 
 if (-Not (Test-Path $EmacsDotDir)) {
     Write-Host "    [>>] Criando diretório .emacs.d..." -ForegroundColor DarkGray
     New-Item -ItemType Directory -Force -Path $EmacsDotDir | Out-Null
+}
+
+$EmacspeakDirUnix = $EmacspeakDir -replace "\\", "/"
+if (-Not $EmacspeakDirUnix.EndsWith("/")) { $EmacspeakDirUnix += "/" }
+
+# Download do módulo de Acessibilidade externo direto do GitHub
+$InitAccessibilityUrl = "https://raw.githubusercontent.com/ittallo-dev/Emacspeak-install-Windows/main/init-accessibility.el"
+$InitAccessibilityPath = Join-Path $EmacsDotDir "init-accessibility.el"
+
+try {
+    Write-Host "    [>>] Baixando módulo de acessibilidade e voz (init-accessibility.el)..." -ForegroundColor DarkGray
+    Invoke-WebRequest -Uri $InitAccessibilityUrl -OutFile $InitAccessibilityPath -UseBasicParsing
+} catch {
+    Write-Error "FALHA CRÍTICA: Não foi possível baixar o módulo externo de acessibilidade do GitHub."
+    exit
 }
 
 $ElispConfig = @"
@@ -268,10 +272,10 @@ $ElispConfig = @"
 ;; 2. Força a comunicação via Pipes
 (setq process-connection-type nil)
 
-;; 3. Força a codificação de texto compatível para evitar erros de compatibilidade
+;; 3. Força a codificação de texto compatível
 (add-to-list 'process-coding-system-alist '(".*" . (utf-8-dos . utf-8-dos)))
 
-;; 4. Aponta as variáveis de servidor para o executável gerado pelo .NET
+;; 4. Aponta as variáveis de servidor para o executável gerado pelo .NET (SharpWin)
 (setq dtk-program (concat emacspeak-dir "servers/sharpwin.exe"))
 (setenv "DTK_PROGRAM" (concat emacspeak-dir "servers/sharpwin.exe"))
 
@@ -279,20 +283,23 @@ $ElispConfig = @"
 (add-to-list 'load-path (concat emacspeak-dir "lisp"))
 (add-to-list 'exec-path (concat emacspeak-dir "servers"))
 
-;; 6. Inicialização do sistema
+;; 6. Inicialização do núcleo do sistema
 (load-file (concat emacspeak-dir "lisp/emacspeak-setup.el"))
- 
+
+;; 7. Carregamento do Módulo Dinâmico de Acessibilidade e Idioma
+(add-to-list 'load-path user-emacs-directory)
+(require 'init-accessibility)
+
 ;; - Fim da Configuração Base -
 "@
 
 Add-Content -Path $InitElPath -Value $ElispConfig -Encoding UTF8
 
-# Validação física final
 if (-Not (Test-Path $InitElPath)) {
     Write-Error "FALHA CRÍTICA: O arquivo init.el não pôde ser gravado."
     exit
 }
-Write-Host "    [✔] Arquivo init.el configurado e verificado no disco." -ForegroundColor Green
+Write-Host "    [✔] Configuração estrutural e modular concluída no disco." -ForegroundColor Green
 
 # -------------------------------
 # FINALIZAÇÃO DA INSTALAÇÃO GERAL
@@ -302,6 +309,5 @@ Write-Host "`n======================================================" -Foregroun
 Write-Host " ✔ INSTALAÇÃO FINALIZADA COM SUCESSO!" -ForegroundColor Green
 Write-Host " Todas as dependências e arquivos foram validados fisicamente." -ForegroundColor Green
 Write-Host " Inicie o seu Emacs para começar o uso do ambiente audível." -ForegroundColor Green
-Write-Host " Use o menu Iniciar e pesquise por "Emacs" e dê Enter no resultado da pesquisa," -ForegroundColor Green
-Write-Host " isso vai iniciar o programa que deve responder anunciando que o sistema está funcionando." -ForegroundColor Green
+Write-Host " Use o menu Iniciar, pesquise por `"Emacs`" e dê Enter." -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
