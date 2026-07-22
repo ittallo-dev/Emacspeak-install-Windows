@@ -287,8 +287,7 @@ $ElispConfig = @"
 (load-file (concat emacspeak-dir "lisp/emacspeak-setup.el"))
 
 ;; 7. Carregamento do Módulo Dinâmico de Acessibilidade e Idioma
-(add-to-list 'load-path user-emacs-directory)
-(require 'init-accessibility)
+(load (expand-file-name "init-accessibility.el" user-emacs-directory))
 
 ;; - Fim da Configuração Base -
 "@
