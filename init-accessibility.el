@@ -1,12 +1,12 @@
 ;;; init-accessibility.el --- Voz, UI Limpa e Acessibilidade -*- lexical-binding: t; -*-
 
-;; --- 1. Limpeza de Interface (Ambiente sem artefatos visuais) ---
-(menu-bar-mode -1)
-(tool-bar-mode -1)
-(scroll-bar-mode -1)
-(setq inhibit-startup-screen t)
-(setq inhibit-startup-message t)
-(setq initial-scratch-message nil)
+;; --- 1. Limpeza de Interface  ---
+;; (menu-bar-mode -1)
+;; (tool-bar-mode -1)
+;; (scroll-bar-mode -1)
+;; (setq inhibit-startup-screen t)
+;; (setq inhibit-startup-message t)
+;; (setq initial-scratch-message nil)
 
 ;; --- 2. Configurações Básicas de Áudio e Feedback ---
 (setq emacspeak-play-program nil)
@@ -54,11 +54,16 @@
       (ignore-errors
         (delete-process proc)))))
 
-;; --- 4. Configuração de Idioma (PT-BR) ---
+;; --- 4. Configuração de Idioma ---
 (defun my/emacspeak-apply-language ()
-  "Aplica português do Brasil nativamente."
+  "Aplica português do Brasil forçando o nome exato da voz no SAPI."
+  (interactive)
+  ;; Força a cultura para o .NET (case-sensitive)
   (when (fboundp 'dtk-set-language)
-    (dtk-set-language "pt-br"))
+    (dtk-set-language "pt-BR"))
+  ;; Envia o comando 'v' para o SharpWin com o nome da voz
+  (when (fboundp 'dtk-set-voice)
+    (dtk-set-voice "Microsoft Maria Desktop"))
   (setq dtk-speech-rate 180))
 
 ;; Inicialização de hooks temporizados para garantir carregamento seguro
@@ -74,21 +79,25 @@
   "Idioma atual do Emacspeak controlado pelo usuário.")
 
 (defun my/emacspeak-toggle-language ()
-  "Alterna rapidamente entre português do Brasil e inglês."
+  "Alterna rapidamente entre português do Brasil (Maria) e inglês (Zira)."
   (interactive)
   (when (fboundp 'dtk-stop)
     (dtk-stop))
   (condition-case nil
       (if (string= my/emacspeak-current-language "pt-br")
           (progn
-            (dtk-set-language "en")
+            ;; Transição para Inglês
+            (dtk-set-language "en-US")
+            (dtk-set-voice "Microsoft Zira Desktop")
             (setq my/emacspeak-current-language "en")
             (run-with-timer
              0.2 nil
              (lambda ()
                (when (fboundp 'dtk-speak)
                  (dtk-speak "English mode")))))
-        (dtk-set-language "pt-br")
+        ;; Transição para Português
+        (dtk-set-language "pt-BR")
+        (dtk-set-voice "Microsoft Maria Desktop")
         (setq my/emacspeak-current-language "pt-br")
         (run-with-timer
          0.2 nil
